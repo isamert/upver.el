@@ -10,6 +10,8 @@
 ;; outdated. Instead of putting node as overlay property, put node's
 ;; range (this might be bad because range might change after the
 ;; upgrade) OR simply re-run function from cache
+;; TODO: define minor mode with keybindings
+;; TODO: Cache values per buffer
 
 (require 's)
 (require 'treesit)
@@ -22,10 +24,12 @@
     (set-process-sentinel
      (start-process "*upver-yarn*" output-buf "yarn" "outdated" "--json")
      (lambda (_proc _event)
-       (funcall cb (with-current-buffer output-buf
-                     (json-parse-string
-                      (car (s-split-up-to "\n" (buffer-substring-no-properties (point-min) (point-max)) 1))
-                      :object-type 'alist :array-type 'list)))
+       (funcall
+        cb
+        (with-current-buffer output-buf
+          (json-parse-string
+           (nth 1 (s-split-up-to "\n" (buffer-substring-no-properties (point-min) (point-max)) 1))
+           :object-type 'alist :array-type 'list)))
        (kill-buffer output-buf)))))
 
 (defun upver--find-value-node-with-key (root key)
@@ -59,11 +63,13 @@ WHERE is either \"devDependencies\" or \"dependencies\"."
 
 (defun upver-init ()
   (interactive)
+  (unless (equal (file-name-nondirectory (buffer-file-name)) "package.json")
+    (user-error "Not in a package.json buffer!"))
+  (message "upver: Getting updates...")
   (upver--yarn-outdated
    (lambda (updates)
      ;; TODO: remove only our overlays, see upver--overlay-at
-     (with-current-buffer "package.json"
-       (remove-overlays))
+     (remove-overlays)
      (let ((data (let-alist updates
                    (--map (list
                            :package (nth 0 it)
@@ -72,28 +78,33 @@ WHERE is either \"devDependencies\" or \"dependencies\"."
                            :latest (nth 3 it))
                           .data.body))))
        (--each data
-         (with-current-buffer "package.json"
-           (when-let (node (treesit-node-parent (upver--find-package-node (plist-get it :path) (plist-get it :package))))
-             (let* ((ov (make-overlay (treesit-node-start node)
-                                      (treesit-node-end node)))
-                    (wanted-latest? (equal (plist-get it :wanted)
-                                           (plist-get it :latest))))
-               (overlay-put ov 'upver t)
-               (overlay-put ov 'upver-node node)
-               (overlay-put ov 'upver-data it)
-               (overlay-put
-                ov 'after-string
-                (format
-                 " %s → %s%s"
-                 (propertize "⇒ :wanted" 'face
-                             `(:foreground "grey"))
-                 (propertize (plist-get it :wanted) 'face
-                             `(:foreground ,(if wanted-latest? "green" "yellow")))
-                 (if (not wanted-latest?)
-                     (format " | %s %s"
-                             (propertize ":latest" 'face '(:foreground "grey"))
-                             (propertize (plist-get it :latest) 'face '(:foreground "green")))
-                   "")))))))))))
+         (when-let (node
+                    (treesit-node-parent
+                     (upver--find-package-node
+                      (plist-get it :path)
+                      (plist-get it :package))))
+           (let* ((ov (make-overlay (treesit-node-start node)
+                                    (treesit-node-end node)))
+                  (wanted-latest? (equal (plist-get it :wanted)
+                                         (plist-get it :latest))))
+             (overlay-put ov 'upver t)
+             (overlay-put ov 'upver-node node)
+             (overlay-put ov 'upver-data it)
+             (overlay-put
+              ov 'after-string
+              (format
+               " %s → %s%s"
+               (propertize "⇒ :wanted" 'face
+                           `(:foreground "grey"))
+               (propertize (plist-get it :wanted) 'face
+                           `(:foreground ,(if wanted-latest? "green" "yellow")))
+               (if (not wanted-latest?)
+                   (format " | %s %s"
+                           (propertize ":latest" 'face '(:foreground "grey"))
+                           (propertize (plist-get it :latest) 'face '(:foreground "green")))
+                 ""))))))
+       (message "upver: Getting updates...Done.")))))
+
 
 (defun upver-upgrade-to-wanted ()
   (interactive)
