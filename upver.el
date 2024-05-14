@@ -73,6 +73,12 @@ It can be either \\='below or \\='right.  Also see `upver-prefix'."
                  (const :value right))
   :group 'upver)
 
+(defcustom upver-auto-next t
+  "Whether to jump to next upgradable dependency after acting on current one.
+This effects the behavior of \\[upver-wanted] or \\[upver-latest]."
+  :type 'boolean
+  :group 'upver)
+
 ;;;; Version info providers
 
 (defun upver--npm-outdated (cb)
@@ -210,7 +216,7 @@ Tries \"dependencies\" first and then \"devDependencies\"."
 
 ;;;; Internal Misc.
 
-(defun upver--upgrade-to (type)
+(defun upver--upgrade-to (type &optional interactive?)
   (when-let* ((ov (upver--overlay-at (point)))
               (data (overlay-get ov 'upver-data))
               (node (overlay-get ov 'upver-node))
