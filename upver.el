@@ -251,6 +251,8 @@ Tries \"dependencies\" first and then \"devDependencies\"."
   (interactive)
   (unless (equal (file-name-nondirectory (buffer-file-name)) "package.json")
     (user-error "Not in a package.json buffer!"))
+  (when upver-mode
+    (upver-finish))
   (message "upver: Getting updates...")
   (upver-mode +1)
   (let ((buffer (current-buffer)))
