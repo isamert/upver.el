@@ -23,16 +23,17 @@
 
 ;;; Commentary:
 
-;; Easily upgrade your packages inside Emacs.  Basic workflow is as
-;; follows:
+;; Easily upgrade your dependencies inside Emacs for your NPM/YARN
+;; projects (other package managers are planned).  Basic workflow is
+;; as follows:
 ;;
-;; - Do `upver-init'.  You'll get possible updates right next/below to
-;;   your packages.
+;; - Do `upver'.  You'll get possible updates right next/below to your
+;;   dependencies.
 ;; - Use \\[upver-wanted] or \\[upver-latest] to update current
 ;;   dependency, or use one of \\[upver-all-wanted]
 ;;   \\[upver-all-latest] to upgrade all of the dependencies.
 ;; - Use \\[upver-next] and \\[upver-prev] to navigate between
-;;   upgradable packages.
+;;   upgradable dependencies.
 ;; - Do `upver-finish' to finalize the process.  Just closes the upver
 ;;   mode, does nothing special.
 ;;
@@ -138,7 +139,6 @@ Tries \"dependencies\" first and then \"devDependencies\"."
     found))
 
 (defun upver--clear-overlays ()
-  ""
   ;; TODO: remove only our overlays, see upver--overlay-at
   (remove-overlays))
 
@@ -246,7 +246,7 @@ Tries \"dependencies\" first and then \"devDependencies\"."
             (define-key map (kbd "C-c C-c") #'upver-finish)
             map))
 
-(defun upver-init ()
+(defun upver ()
   "Start an upver session."
   (interactive)
   (unless (equal (file-name-nondirectory (buffer-file-name)) "package.json")
