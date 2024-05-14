@@ -138,8 +138,8 @@ Tries \"dependencies\" first and then \"devDependencies\"."
             overlays (cdr overlays)))
     found))
 
+;; TODO: remove only our overlays, see upver--overlay-at
 (defun upver--clear-overlays ()
-  ;; TODO: remove only our overlays, see upver--overlay-at
   (remove-overlays))
 
 ;;;; Utils
@@ -149,6 +149,10 @@ Tries \"dependencies\" first and then \"devDependencies\"."
              (lambda (a b)
                (< (abs (- num a))
                   (abs (- num b)))))))
+
+(defun upver--goto-line (line)
+  (goto-char (point-min))
+  (forward-line (1- line)))
 
 ;;;; Main
 
@@ -222,12 +226,14 @@ Tries \"dependencies\" first and then \"devDependencies\"."
          (if (s-prefix? "^" current) "^" "")
          (plist-get data type)
          "\"")))
-    (upver--draw-updates (--remove (equal it data) upver-updates))))
+    (upver--draw-updates (--remove (equal it data) upver-updates))
+    (when (and upver-auto-next interactive?)
+      (upver-next))))
 
 (defun upver--upgrade-all-to (type)
   (--each upver--pos
     (save-excursion
-      (goto-line it)
+      (upver--goto-line it)
       (back-to-indentation)
       (upver--upgrade-to type))))
 
@@ -277,8 +283,8 @@ Tries \"dependencies\" first and then \"devDependencies\"."
   (let* ((line (line-number-at-pos))
          (closest (upver--find-closest-number line upver--pos)))
     (cond
-     ((< line closest) (goto-line closest))
-     ((>= line closest) (goto-line (nth (1+ (-elem-index closest upver--pos)) upver--pos)))))
+     ((< line closest) (upver--goto-line closest))
+     ((>= line closest) (upver--goto-line (nth (1+ (-elem-index closest upver--pos)) upver--pos)))))
   (back-to-indentation))
 
 (defun upver-prev ()
@@ -287,19 +293,19 @@ Tries \"dependencies\" first and then \"devDependencies\"."
   (let* ((line (line-number-at-pos))
          (closest (upver--find-closest-number line upver--pos)))
     (cond
-     ((<= line closest) (goto-line (nth (1- (-elem-index closest upver--pos)) upver--pos)))
-     ((> line closest) (goto-line closest))))
+     ((<= line closest) (upver--goto-line (nth (1- (-elem-index closest upver--pos)) upver--pos)))
+     ((> line closest) (upver--goto-line closest))))
   (back-to-indentation))
 
 (defun upver-wanted ()
   "Upgrade current dependency to the wanted value."
   (interactive nil upver-mode)
-  (upver--upgrade-to :wanted))
+  (upver--upgrade-to :wanted (called-interactively-p 'interactive)))
 
 (defun upver-latest ()
   "Upgrade current dependency to the latest value."
   (interactive nil upver-mode)
-  (upver--upgrade-to :latest))
+  (upver--upgrade-to :latest (called-interactively-p 'interactive)))
 
 (defun upver-all-wanted ()
   "Upgrade all dependencies to their wanted value."
