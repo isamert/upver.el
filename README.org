@@ -4,6 +4,8 @@ Easily upgrade your dependencies inside Emacs for your NPM/YARN
 projects (other package managers are planned). Something similar to
 VSCode's [[https://marketplace.visualstudio.com/items?itemName=pflannery.vscode-versionlens][Version Lens]] plugin.
 
+#+html: <img src="https://github.com/isamert/upver.el/assets/8031017/8974cad9-5143-464b-9465-84b981b42f1d">
+
 * Installation
 
 #+begin_src elisp
