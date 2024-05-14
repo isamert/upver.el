@@ -44,6 +44,8 @@
 ;;
 ;; TODO: Support other package managers other than npm, like (in order
 ;; of importance to me): cargo, maven, gradle.
+;;
+;; TODO: Set header-line-format to display shortcuts?
 
 ;;; Code:
 
