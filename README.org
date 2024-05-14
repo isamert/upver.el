@@ -1,3 +1,47 @@
-#+TITLE: upver.el (WIP)
+#+TITLE: upver.el
 
-Somethong similar to VSCode's [[https://marketplace.visualstudio.com/items?itemName=pflannery.vscode-versionlens][Version Lens]] plugin.
+Easily upgrade your dependencies inside Emacs for your NPM/YARN
+projects (other package managers are planned). Something similar to
+VSCode's [[https://marketplace.visualstudio.com/items?itemName=pflannery.vscode-versionlens][Version Lens]] plugin.
+
+* Installation
+
+#+begin_src elisp
+  ;; Using straight:
+  (use-package empv :straight (:host github :repo "isamert/upver.el"))
+
+  ;; Using quelpa:
+  (use-package empv :quelpa (empv :fetcher github :repo "isamert/upver.el"))
+#+end_src
+
+* Usage
+
+- Do ~M-x upver~.  You'll get possible updates right next/below to your
+  dependencies.
+- Use ~upver-wanted~ or ~upver-latest~ to update current dependency, or
+  use one of upver-all-wanted ~upver-all-latest~ to upgrade all of the
+  dependencies.
+- Use ~upver-next~ and ~upver-prev~ to navigate between upgradable
+  dependencies.
+- Do `upver-finish' to finalize the process.  Just closes the upver
+  mode, does nothing special.
+
+Manually editing the buffer during an upver session might create some
+visual inconsistencies.  I hope to fix this but it's not a priority.
+If you stick with the functions above, everything will be fine.
+
+* Bindings
+
+When you do ~M-x upver~, ~upver-mode~ is activated. It's a minor mode that
+provides some useful bindings.  Do ~M-x describe-keymap upver-mode-map~
+to list all actions in it's keymap or take a look at this:
+
+| Key     | Function         | Descrip                                         |
+|---------+------------------+-------------------------------------------------|
+| ~C-c C-n~ | upver-next       | Go to next upgradable dependency.               |
+| ~C-c C-p~ | upver-prev       | Go to previous upgradable dependency.           |
+| ~C-c #~   | upver-wanted     | Upgrade current dependency to the wanted value. |
+| ~C-c ^~   | upver-latest     | Upgrade current dependency to the latest value. |
+| ~C-c C-#~ | upver-all-wanted | Upgrade all dependencies to their wanted value. |
+| ~C-c C-^~ | upver-all-latest | Upgrade all dependencies to their latest value. |
+| ~C-c C-c~ | upver-finish     | Finish the upver session.                       |
