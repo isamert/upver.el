@@ -19,12 +19,12 @@ VSCode's [[https://marketplace.visualstudio.com/items?itemName=pflannery.vscode-
 - Do ~M-x upver~.  You'll get possible updates right next/below to your
   dependencies.
 - Use ~upver-wanted~ or ~upver-latest~ to update current dependency, or
-  use one of upver-all-wanted ~upver-all-latest~ to upgrade all of the
+  use one of ~upver-all-wanted~, ~upver-all-latest~ to upgrade all of the
   dependencies.
 - Use ~upver-next~ and ~upver-prev~ to navigate between upgradable
   dependencies.
-- Do `upver-finish' to finalize the process.  Just closes the upver
-  mode, does nothing special.
+- Do ~upver-finish~ to finalize the process.  This just closes the
+  ~upver-mode~, nothing special.
 
 Manually editing the buffer during an upver session might create some
 visual inconsistencies.  I hope to fix this but it's not a priority.
@@ -36,12 +36,23 @@ When you do ~M-x upver~, ~upver-mode~ is activated. It's a minor mode that
 provides some useful bindings.  Do ~M-x describe-keymap upver-mode-map~
 to list all actions in it's keymap or take a look at this:
 
-| Key     | Function         | Descrip                                         |
+| Key     | Function         | Description                                     |
 |---------+------------------+-------------------------------------------------|
-| ~C-c C-n~ | upver-next       | Go to next upgradable dependency.               |
-| ~C-c C-p~ | upver-prev       | Go to previous upgradable dependency.           |
 | ~C-c #~   | upver-wanted     | Upgrade current dependency to the wanted value. |
 | ~C-c ^~   | upver-latest     | Upgrade current dependency to the latest value. |
+| ~C-c C-n~ | upver-next       | Go to next upgradable dependency.               |
+| ~C-c C-p~ | upver-prev       | Go to previous upgradable dependency.           |
 | ~C-c C-#~ | upver-all-wanted | Upgrade all dependencies to their wanted value. |
 | ~C-c C-^~ | upver-all-latest | Upgrade all dependencies to their latest value. |
 | ~C-c C-c~ | upver-finish     | Finish the upver session.                       |
+
+* Customization
+
+Check out all configuration options by doing =M-x customize-group upver RET=.  Important options are:
+
+- ~upver-auto-next~ :: Whether to jump to next upgradable dependency
+  after acting on current one.  Enabled by default but you can disable
+  it by setting it to ~nil~.
+- ~upver-placement~ :: Place to display upver versions relative to the
+  dependency.  It can be either ~below~ or ~right~.  By default they are
+  shown below.
