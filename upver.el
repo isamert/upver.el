@@ -292,7 +292,10 @@ Tries \"dependencies\" first and then \"devDependencies\"."
          (closest (upver--find-closest-number line upver--pos)))
     (cond
      ((< line closest) (upver--goto-line closest))
-     ((>= line closest) (upver--goto-line (nth (1+ (-elem-index closest upver--pos)) upver--pos)))))
+     ((>= line closest)
+      (let ((idx (1+ (-elem-index closest upver--pos))))
+        (when (< idx (length upver--pos))
+          (upver--goto-line (nth idx upver--pos)))))))
   (back-to-indentation))
 
 (defun upver-prev ()
