@@ -28,9 +28,13 @@ VSCode's [[https://marketplace.visualstudio.com/items?itemName=pflannery.vscode-
 - Do ~upver-finish~ to finalize the process.  This just closes the
   ~upver-mode~, nothing special.
 
-You can not edit the buffer manually while upver is active.  Just use
+You can not edit the buffer manually while /upver/ is active.  Just use
 ~upver-wanted~ or ~upver-latest~ to upgrade packages and when you are
 done, do ~upver-finish~ to return back to normal editing.
+
+Please note that ~upver~ does not /upgrade/ packages.  It simply updates
+the version info definition in the dependency file.  You still need to
+run your installation command (i.e. ~yarn~, ~npm i~ etc.) after.
 
 * Bindings
 
@@ -49,9 +53,8 @@ These keys belong to the ~upver-dependency-map~ and only activated when
 you are on an upgradable dependency.
 
 Also you do ~M-x upver~, ~upver-mode~ is activated. It's a minor mode that
-provides some useful but more verbose bindings.  Do ~M-x
-describe-keymap upver-mode-map~ to list all actions in it's keymap or
-take a look at this:
+provides some useful but more verbose bindings.  Do ~M-x describe-keymap upver-mode-map~
+to list all actions in it's keymap or take a look at this:
 
 | Key     | Function         | Description                                     |
 |---------+------------------+-------------------------------------------------|
