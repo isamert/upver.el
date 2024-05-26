@@ -170,6 +170,15 @@ Tries \"dependencies\" first and then \"devDependencies\"."
 (defvar-local upver--pos '()
   "Position info for updates.")
 
+(defvar-keymap upver-dependency-map
+  "#" #'upver-wanted
+  "^" #'upver-latest
+  "p" #'upver-prev
+  "n" #'upver-next)
+
+(defun upver--which-key (map fn)
+  (key-description (where-is-internal fn map t)))
+
 (defun upver--draw-updates (updates)
   (setq upver-updates updates)
   (upver--clear-overlays)
@@ -191,12 +200,24 @@ Tries \"dependencies\" first and then \"devDependencies\"."
         (overlay-put ov 'upver-node node)
         (overlay-put ov 'upver-data it)
         ;; TODO: Make faces customizable.
+        (overlay-put ov 'keymap upver-dependency-map)
+        (overlay-put
+         ov 'help-echo
+         (lambda (_window _obj _pos)
+           (substitute-command-keys
+	          (format
+             (concat
+              "\\[upver-wanted] → %s, \\[upver-latest] → %s\n"
+              "\\[upver-next] → next, \\[upver-prev] → previous\n"
+              "\\[upver-finish] → Done")
+             (plist-get it :wanted)
+             (plist-get it :latest)))))
         (overlay-put
          ov 'after-string
          (concat
           (if (eql upver-placement 'right)
               ""
-            (concat "\n" (make-string (current-indentation) ? )))
+            (concat "\n" (make-string (save-excursion (goto-char start) (current-indentation)) ? )))
           " "
           (or upver-prefix (if (eql upver-placement 'right) "⇒ " "⮑ "))
           (if wanted-current?
@@ -275,7 +296,8 @@ Tries \"dependencies\" first and then \"devDependencies\"."
   (let ((buffer (current-buffer)))
     (upver--npm-outdated (lambda (updates)
                            (with-current-buffer buffer
-                             (upver--draw-updates updates))))))
+                             (upver--draw-updates updates)
+                             (upver--help-at-point))))))
 
 (defun upver-finish ()
   "Finish the upver session."
@@ -285,6 +307,7 @@ Tries \"dependencies\" first and then \"devDependencies\"."
     (setq upver-updates '())
     (setq upver--pos '())
     (upver-mode -1)
+    (upver--help-at-point-cancel)
     (read-only-mode -1)
     ;; TODO: Add a finish hook that installs packages?
     (message "upver: Done. You may want to run your package manager to install updated versions.")))
@@ -331,6 +354,27 @@ Tries \"dependencies\" first and then \"devDependencies\"."
   "Upgrade all dependencies to their latest value."
   (interactive nil upver-mode)
   (upver--upgrade-all-to :latest))
+
+;;; help at point mode
+
+(defvar upver--help-at-point-timer nil)
+
+(defun upver--show-help ()
+  (message (display-local-help t)))
+
+(defun upver--help-at-point ()
+  (unless upver--help-at-point-timer
+    (setq
+     upver--help-at-point-timer
+     (run-with-idle-timer
+	    0 t #'upver--show-help))))
+
+(defun upver--help-at-point-cancel ()
+  (when upver--help-at-point-timer
+    (cancel-timer upver--help-at-point-timer)
+    (setq
+     upver--help-at-point-timer
+     nil)))
 
 (provide 'upver)
 ;;; upver.el ends here

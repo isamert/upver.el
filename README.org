@@ -4,7 +4,7 @@ Easily upgrade your dependencies inside Emacs for your NPM/YARN
 projects (other package managers are planned). Something similar to
 VSCode's [[https://marketplace.visualstudio.com/items?itemName=pflannery.vscode-versionlens][Version Lens]] plugin.
 
-#+html: <img src="https://github.com/isamert/upver.el/assets/8031017/afa8cbad-840f-45dd-a4d9-164d43f3da7a">
+#+html: <img src="https://github.com/isamert/upver.el/assets/8031017/67ab3379-77cc-4de4-a970-fad3a7ff7d76">
 
 * Installation
 
@@ -34,9 +34,24 @@ done, do ~upver-finish~ to return back to normal editing.
 
 * Bindings
 
-When you do ~M-x upver~, ~upver-mode~ is activated. It's a minor mode that
-provides some useful bindings.  Do ~M-x describe-keymap upver-mode-map~
-to list all actions in it's keymap or take a look at this:
+When you do ~M-x upver~, you'll see a helpful text at the echo area that
+summarizes which keys you can press. Basically you can use the
+following keys:
+
+| Key     | Function     | Description                                     |
+|---------+--------------+-------------------------------------------------|
+| ~#~       | upver-wanted | Upgrade current dependency to the wanted value. |
+| ~^~       | upver-latest | Upgrade current dependency to the latest value. |
+| ~n~       | upver-next   | Go to next upgradable dependency.               |
+| ~p~       | upver-prev   | Go to previous upgradable dependency.           |
+
+These keys belong to the ~upver-dependency-map~ and only activated when
+you are on an upgradable dependency.
+
+Also you do ~M-x upver~, ~upver-mode~ is activated. It's a minor mode that
+provides some useful but more verbose bindings.  Do ~M-x
+describe-keymap upver-mode-map~ to list all actions in it's keymap or
+take a look at this:
 
 | Key     | Function         | Description                                     |
 |---------+------------------+-------------------------------------------------|
