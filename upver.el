@@ -219,24 +219,26 @@ Tries \"dependencies\" first and then \"devDependencies\"."
 ;;;; Internal Misc.
 
 (defun upver--upgrade-to (type &optional interactive?)
-  (when-let* ((ov (upver--overlay-at (point)))
-              (data (overlay-get ov 'upver-data))
-              (node (overlay-get ov 'upver-node))
-              (value-node (treesit-node-child-by-field-name node "value")))
-    (save-excursion
-      (goto-char (treesit-node-start value-node))
-      (let* ((beg (treesit-node-start value-node))
-             (end (treesit-node-end value-node))
-             (current (prog1 (buffer-substring-no-properties (1+ beg) (1- end))
-                        (delete-region beg end))))
-        (insert
-         "\""
-         (if (s-prefix? "^" current) "^" "")
-         (plist-get data type)
-         "\"")))
-    (upver--draw-updates (--remove (equal it data) upver-updates))
-    (when (and upver-auto-next interactive?)
-      (upver-next))))
+  (let ((inhibit-read-only t))
+    (when-let* ((ov (upver--overlay-at (point)))
+                (data (overlay-get ov 'upver-data))
+                (node (overlay-get ov 'upver-node))
+                (value-node (treesit-node-child-by-field-name node "value")))
+      (save-excursion
+        (goto-char (treesit-node-start value-node))
+        (let* ((beg (treesit-node-start value-node))
+               (end (treesit-node-end value-node))
+               (current (prog1 (buffer-substring-no-properties (1+ beg) (1- end))
+                          (delete-region beg end))))
+          (insert
+           "\""
+           (if (s-prefix? "^" current) "^" "")
+           (plist-get data type)
+           "\"")))
+      (upver--draw-updates (--remove (equal it data) upver-updates))
+      (when (and upver-auto-next interactive?)
+        (ignore-errors
+          (upver-next))))))
 
 (defun upver--upgrade-all-to (type)
   (--each upver--pos
@@ -269,6 +271,7 @@ Tries \"dependencies\" first and then \"devDependencies\"."
     (upver-finish))
   (message "upver: Getting updates...")
   (upver-mode +1)
+  (read-only-mode)
   (let ((buffer (current-buffer)))
     (upver--npm-outdated (lambda (updates)
                            (with-current-buffer buffer
@@ -282,6 +285,7 @@ Tries \"dependencies\" first and then \"devDependencies\"."
     (setq upver-updates '())
     (setq upver--pos '())
     (upver-mode -1)
+    (read-only-mode -1)
     ;; TODO: Add a finish hook that installs packages?
     (message "upver: Done. You may want to run your package manager to install updated versions.")))
 

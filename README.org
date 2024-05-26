@@ -28,9 +28,9 @@ VSCode's [[https://marketplace.visualstudio.com/items?itemName=pflannery.vscode-
 - Do ~upver-finish~ to finalize the process.  This just closes the
   ~upver-mode~, nothing special.
 
-Manually editing the buffer during an upver session might create some
-visual inconsistencies.  I hope to fix this but it's not a priority.
-If you stick with the functions above, everything will be fine.
+You can not edit the buffer manually while upver is active.  Just use
+~upver-wanted~ or ~upver-latest~ to upgrade packages and when you are
+done, do ~upver-finish~ to return back to normal editing.
 
 * Bindings
 
