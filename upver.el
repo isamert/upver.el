@@ -205,10 +205,10 @@ Tries \"dependencies\" first and then \"devDependencies\"."
          ov 'help-echo
          (lambda (_window _obj _pos)
            (substitute-command-keys
-	          (format
+	    (format
              (concat
-              "\\[upver-wanted] → %s, \\[upver-latest] → %s\n"
-              "\\[upver-next] → next, \\[upver-prev] → previous\n"
+              "\\[upver-wanted] → %s\t\t\\[upver-latest] → %s\n"
+              "\\[upver-next] → next\t\t\\[upver-prev] → previous\n"
               "\\[upver-finish] → Done")
              (plist-get it :wanted)
              (plist-get it :latest)))))
@@ -234,8 +234,7 @@ Tries \"dependencies\" first and then \"devDependencies\"."
                (propertize ":latest → " 'face '(:foreground "grey"))
                (propertize (plist-get it :latest) 'face '(:foreground "green")))
             ""))))))
-  (sort upver--pos #'<)
-  (message "upver: Getting updates...Done."))
+  (sort upver--pos #'<))
 
 ;;;; Internal Misc.
 
@@ -294,10 +293,15 @@ Tries \"dependencies\" first and then \"devDependencies\"."
   (upver-mode +1)
   (read-only-mode)
   (let ((buffer (current-buffer)))
-    (upver--npm-outdated (lambda (updates)
-                           (with-current-buffer buffer
-                             (upver--draw-updates updates)
-                             (upver--help-at-point))))))
+    (upver--npm-outdated
+     (lambda (updates)
+       (with-current-buffer buffer
+         (upver--draw-updates updates)
+         (upver--help-at-point)
+         (message "upver: Getting updates...Done.")
+         (goto-char (point-min))
+         (upver-next)
+         (recenter))))))
 
 (defun upver-finish ()
   "Finish the upver session."
@@ -360,7 +364,7 @@ Tries \"dependencies\" first and then \"devDependencies\"."
 (defvar upver--help-at-point-timer nil)
 
 (defun upver--show-help ()
-  (message (display-local-help t)))
+  (display-local-help t))
 
 (defun upver--help-at-point ()
   (unless upver--help-at-point-timer
