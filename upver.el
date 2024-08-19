@@ -81,7 +81,29 @@ This effects the behavior of \\[upver-wanted] or \\[upver-latest]."
   :type 'boolean
   :group 'upver)
 
+(defcustom upver-maven-display-dependency-updates-default-arguments
+  '("-DprocessDependencyManagement=false"
+    "-DprocessPluginDependenciesInPluginManagement=false")
+  "Default arguments passed to `versions:display-dependency-updates' mvn subcommand."
+  :type 'list
+  :group 'upver-mvn)
+
+(defcustom upver-maven-display-dependency-updates-latest-arguments
+  nil
+  "Arguments passed to `versions:display-dependency-updates' mvn subcommand for obtaining latest versions."
+  :type 'list
+  :group 'upver-mvn)
+
+(defcustom upver-maven-display-dependency-updates-wanted-arguments
+  '("-DallowMajorUpdates=false")
+  "Arguments passed to `versions:display-dependency-updates' mvn subcommand for obtaining wanted versions."
+  :type 'list
+  :group 'upver-mvn)
+
+
 ;;;; Version info providers
+
+;;;;; npm
 
 (defun upver--npm-outdated (cb)
   "Run \"npm outdated --json\" and call CB with it's parsed output."
@@ -90,7 +112,7 @@ This effects the behavior of \\[upver-wanted] or \\[upver-latest]."
   (let ((process-environment (cons "NODE_NO_WARNINGS=1" process-environment))
         (output-buf (generate-new-buffer "*upver-npm-outdated*")))
     (set-process-sentinel
-     (start-process "*upver-npm-outdated*" output-buf "npm" "outdated" "--json")
+     (start-process " *upver-npm-outdated*" output-buf "npm" "outdated" "--json")
      (lambda (_proc _event)
        (funcall
         cb
@@ -106,6 +128,65 @@ This effects the behavior of \\[upver-wanted] or \\[upver-latest]."
              (goto-char (point-min))
              (json-parse-buffer :object-type 'alist :array-type 'list)))))
        (kill-buffer output-buf)))))
+
+;;;;; maven
+
+(cl-defun upver--run-mvn (&key args update-snapshots offline callback)
+  (let ((output-buf (generate-new-buffer "*upver-mvn-outdated*")))
+    (set-process-sentinel
+     (apply #'start-process " *upver-mvn-outdated*" output-buf
+            `("mvn" "-Dstyle.color=never"
+              ,@(when offline '("--offline"))
+              ,@(when update-snapshots '("--update-snapshots"))
+              "versions:display-dependency-updates"
+              "-Dversions.outputLineWidth=180"
+              ,@upver-maven-display-dependency-updates-default-arguments
+              ,@args))
+     (lambda (_proc _event)
+       (funcall
+        callback
+        (prog1 (with-current-buffer output-buf
+                 (buffer-substring-no-properties (point-min) (point-max)))
+          (kill-buffer output-buf)))))))
+
+
+(defun upver--parse-mvn (version-variable output)
+  (->>
+   output
+   (s-lines)
+   (--filter (s-contains? " -> " it))
+   (--map (s-split " " it t))
+   (--map (list
+           :package (nth 1 it)
+           :current (nth 3 it)
+           version-variable (nth 5 it)))))
+
+
+(defun upver--mvn-outdated (cb)
+  (upver--run-mvn
+   :update-snapshots t
+   :args upver-maven-display-dependency-updates-latest-arguments
+   :callback
+   (lambda (output)
+     (let ((latests (upver--parse-mvn :latest output)))
+       (upver--run-mvn
+        :args upver-maven-display-dependency-updates-wanted-arguments
+        :offline t ;; Second run can be offline, to speed things up
+        :callback
+        (lambda (output)
+          (let ((wanteds (upver--parse-mvn :wanted output))
+                result)
+            (dolist (latest latests)
+              (push
+               (map-merge
+                'plist
+                (seq-find (lambda (wanted)
+                            (equal (plist-get wanted :package)
+                                   (plist-get latest :package)))
+                          wanteds)
+                latest)
+               result))
+            (funcall cb result))))))))
 
 ;;;; Treesit utils
 
