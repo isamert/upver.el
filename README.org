@@ -1,19 +1,18 @@
 #+TITLE: upver.el
 
-Easily upgrade your dependencies inside Emacs for your NPM/YARN
-projects (other package managers are planned). Something similar to
-VSCode's [[https://marketplace.visualstudio.com/items?itemName=pflannery.vscode-versionlens][Version Lens]] plugin.
+Easily upgrade your dependencies inside Emacs for your npm/Yarn/Cargo
+projects.  Something similar to VSCode's [[https://marketplace.visualstudio.com/items?itemName=pflannery.vscode-versionlens][Version Lens]] plugin.
 
 #+html: <img src="https://github.com/isamert/upver.el/assets/8031017/67ab3379-77cc-4de4-a970-fad3a7ff7d76">
 
 * Installation
 
 #+begin_src elisp
-  ;; Using straight:
-  (use-package upver :straight (:host github :repo "isamert/upver.el"))
+;; Using straight:
+(use-package upver :straight (:host github :repo "isamert/upver.el"))
 
-  ;; Using quelpa:
-  (use-package upver :quelpa (upver :fetcher github :repo "isamert/upver.el"))
+;; Using quelpa:
+(use-package upver :quelpa (upver :fetcher github :repo "isamert/upver.el"))
 #+end_src
 
 * Usage
@@ -68,7 +67,8 @@ to list all actions in it's keymap or take a look at this:
 
 * Customization
 
-Check out all configuration options by doing =M-x customize-group upver RET=.  Important options are:
+Check out all configuration options by doing =M-x customize-group upver
+RET=.  Important options are:
 
 - ~upver-auto-next~ :: Whether to jump to next upgradable dependency
   after acting on current one.  Enabled by default but you can disable
@@ -76,3 +76,16 @@ Check out all configuration options by doing =M-x customize-group upver RET=.  I
 - ~upver-placement~ :: Place to display upver versions relative to the
   dependency.  It can be either ~below~ or ~right~.  By default they are
   shown below.
+
+* Notes
+
+- For ~package.json~, upver.el uses [[https://docs.npmjs.com/cli/v8/commands/npm-outdated][npm outdated]] to fetch the updates.
+- For ~Cargo.toml~, upver.el uses [[https://github.com/kbknapp/cargo-outdated][cargo outdated]] to fetch the updates.
+
+The terminology used by upver.el is inherited from ~npm outdated~
+command.  Which means
+
+- *:wanted* :: is the maximum version of the package that satisfies the
+  semver range specified in the dependency file (~package.json~,
+  ~Cargo.toml~ etc.).
+- *:latest* :: is the version of the package tagged as latest in the registry.

@@ -23,9 +23,8 @@
 
 ;;; Commentary:
 
-;; Easily upgrade your dependencies inside Emacs for your NPM/YARN
-;; projects (other package managers are planned).  Basic workflow is
-;; as follows:
+;; Easily upgrade your dependencies inside Emacs for your
+;; npm/Yarn/Cargo projects.  Basic workflow is as follows:
 ;;
 ;; - Do `upver'.  You'll get possible updates right next/below to your
 ;;   dependencies.
@@ -36,7 +35,6 @@
 ;;   upgradable dependencies.
 ;; - Do `upver-finish' to finalize the process.  Just closes the upver
 ;;   mode, does nothing special.
-;;
 
 ;;; Code:
 
