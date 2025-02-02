@@ -146,9 +146,8 @@ Tries \"dependencies\" first and then \"devDependencies\"."
             overlays (cdr overlays)))
     found))
 
-;; TODO: remove only our overlays, see upver--overlay-at
 (defun upver--clear-overlays ()
-  (remove-overlays))
+  (remove-overlays (point-min) (point-max) 'upver t))
 
 ;;;; Utils
 
