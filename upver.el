@@ -264,7 +264,7 @@ TYPE is either \"dependencies\" or \"devDependencies\"."
              (concat
               "\\[upver-wanted] → %s\t\t\\[upver-latest] → %s\n"
               "\\[upver-next] → next\t\t\\[upver-prev] → previous\n"
-              "\\[upver-finish] → Done")
+              "\\[upver-finish] → Done\t\t\\[upver-cancel] → Cancel")
              (plist-get it :wanted)
              (plist-get it :latest)))))
         (overlay-put
@@ -334,8 +334,10 @@ TYPE is either \"dependencies\" or \"devDependencies\"."
             (define-key map (kbd "C-c C-n") #'upver-next)
             (define-key map (kbd "C-c C-p") #'upver-prev)
             (define-key map (kbd "C-c C-c") #'upver-finish)
+            (define-key map (kbd "C-c C-k") #'upver-cancel)
             map))
 
+;;;###autoload
 (defun upver ()
   "Start an upver session."
   (interactive)
@@ -346,6 +348,10 @@ TYPE is either \"dependencies\" or \"devDependencies\"."
     (unless def
       (user-error "upver :: Can't recognize \"%s\" buffer with mode `%s'"
                   (buffer-name) major-mode))
+    (when (and buffer-file-name (buffer-modified-p))
+      (if (y-or-n-p (format "Buffer %s is modified, save it? " (buffer-name)))
+          (save-buffer)
+        (user-error "upver :: Need to save the buffer first to use upver")))
     (when upver-mode
       (upver-finish))
     (message "upver: Getting updates...")
@@ -373,9 +379,21 @@ TYPE is either \"dependencies\" or \"devDependencies\"."
     (upver-mode -1)
     (upver--help-at-point-cancel)
     (read-only-mode -1)
+    (when (and buffer-file-name (buffer-modified-p))
+      (when (y-or-n-p (format "Buffer %s is modified, save it? " (buffer-name)))
+        (save-buffer)))
     ;; TODO: Add a finish hook that installs packages?
     (message "upver: Done. You may want to run your package manager to install updated versions")
     (setq-local upver--def nil)))
+
+(defun upver-cancel ()
+  "Cancel all edits made by upver and end the upver session."
+  (interactive nil upver-mode)
+  (when upver-mode
+    (upver-finish)
+    (message "upver: Cancelled")
+    (when (and buffer-file-name (buffer-modified-p))
+      (revert-buffer-quick))))
 
 (defun upver-next ()
   "Go to next upgradable dependency."
