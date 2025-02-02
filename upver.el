@@ -359,7 +359,7 @@ Tries \"dependencies\" first and then \"devDependencies\"."
   (interactive nil upver-mode)
   (upver--upgrade-all-to :latest))
 
-;;; help at point mode
+;;;; Help at point mode
 
 (defvar upver--help-at-point-timer nil)
 
