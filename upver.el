@@ -346,6 +346,8 @@ TYPE is either \"dependencies\" or \"devDependencies\"."
               (map-values upver--defs)))
         (buffer (current-buffer)))
     (unless def
+      (unless (bound-and-true-p treesit-primary-parser)
+        (warn "`treesit' is not enabled for this buffer. upver requires a `treesit' based mode to work"))
       (user-error "upver :: Can't recognize \"%s\" buffer with mode `%s'"
                   (buffer-name) major-mode))
     (when (and buffer-file-name (buffer-modified-p))
@@ -367,7 +369,8 @@ TYPE is either \"dependencies\" or \"devDependencies\"."
          (message "upver: Getting updates...Done")
          (goto-char (point-min))
          (upver-next)
-         (recenter))))))
+         (ignore-errors
+           (recenter)))))))
 
 (defun upver-finish ()
   "Finish the upver session."
