@@ -37,20 +37,12 @@
 ;; - Do `upver-finish' to finalize the process.  Just closes the upver
 ;;   mode, does nothing special.
 ;;
-;; Manually editing the buffer during an upver session might create
-;; some visual inconsistencies.  I hope to fix this but it's not a
-;; priority.  If you stick with the functions above, everything will
-;; be fine.
-;;
-;; TODO: Support other package managers other than npm, like (in order
-;; of importance to me): cargo, maven, gradle.
-;;
-;; TODO: Set header-line-format to display shortcuts?
 
 ;;; Code:
 
 (require 's)
 (require 'dash)
+(require 'map)
 (require 'treesit)
 
 ;;;; Customization
@@ -81,12 +73,33 @@ This effects the behavior of \\[upver-wanted] or \\[upver-latest]."
   :type 'boolean
   :group 'upver)
 
-;;;; Version info providers
+;;;; Variables
+
+(defvar upver--defs (make-hash-table :test 'equal))
+
+(defvar-local upver--def nil)
+
+(defvar-local upver-updates '()
+  "Updates of the current buffer.")
+
+(defvar-local upver--pos '()
+  "Position info for updates.")
+
+(cl-defun upver--register (name &rest plist)
+  (map-put! upver--defs name plist))
+
+;;;; NPM
+
+(upver--register
+ "npm"
+ :pred (lambda ()
+         (and (equal (buffer-name) "package.json")
+              (derived-mode-p 'json-ts-mode)))
+ :fetcher #'upver--npm-outdated
+ :locator #'upver--npm-find-package-node)
 
 (defun upver--npm-outdated (cb)
-  "Run \"npm outdated --json\" and call CB with it's parsed output."
-  (unless (derived-mode-p 'json-ts-mode)
-    (user-error "This only works with treesit.  Try enabling `json-ts-mode' first"))
+  "Run \"npm outdated\" and call CB with it's parsed output."
   (let ((process-environment (cons "NODE_NO_WARNINGS=1" process-environment))
         (output-buf (generate-new-buffer "*upver-npm-outdated*")))
     (set-process-sentinel
@@ -107,9 +120,19 @@ This effects the behavior of \\[upver-wanted] or \\[upver-latest]."
              (json-parse-buffer :object-type 'alist :array-type 'list)))))
        (kill-buffer output-buf)))))
 
-;;;; Treesit utils
+;; TODO: Rewrite this using `treesit-query-capture'
+(defun upver--npm-find-package-node (package-name)
+  "Find PACKAGE-NAMEs node.
+Tries \"dependencies\" first and then \"devDependencies\"."
+  (or
+   (upver--npm-find-value-node-with-key
+    (upver--npm-find-dependencies-node "dependencies")
+    package-name)
+   (upver--npm-find-value-node-with-key
+    (upver--npm-find-dependencies-node "devDependencies")
+    package-name)))
 
-(defun upver--find-value-node-with-key (root key)
+(defun upver--npm-find-value-node-with-key (root key)
   "Find JSON value node with given KEY, under ROOT."
   (treesit-node-child-by-field-name
    (--find
@@ -117,23 +140,65 @@ This effects the behavior of \\[upver-wanted] or \\[upver-latest]."
     (treesit-node-children root "pair"))
    "value"))
 
-(defun upver--find-dependencies-node (type)
+(defun upver--npm-find-dependencies-node (type)
   "Find dependencies node of TYPE.
 TYPE is either \"dependencies\" or \"devDependencies\"."
-  (upver--find-value-node-with-key
+  (upver--npm-find-value-node-with-key
    (treesit-node-child (treesit-buffer-root-node) 0)
    type))
 
-(defun upver--find-package-node (package-name)
-  "Find PACKAGE-NAMEs node.
-Tries \"dependencies\" first and then \"devDependencies\"."
-  (or
-   (upver--find-value-node-with-key
-    (upver--find-dependencies-node "dependencies")
-    package-name)
-   (upver--find-value-node-with-key
-    (upver--find-dependencies-node "devDependencies")
-    package-name)))
+;;;; Cargo
+
+(upver--register
+ "cargo"
+ :pred (lambda ()
+         (and (equal (buffer-name) "Cargo.toml")
+              (derived-mode-p 'toml-ts-mode)))
+ :fetcher #'upver--cargo-outdated
+ :locator #'upver--cargo-find-package-node)
+
+(defun upver--cargo-outdated (cb)
+  "Run \"cargo outdated\" and call CB with it's parsed output."
+  (let ((output-buf (generate-new-buffer "*upver-cargo-outdated*")))
+    (set-process-sentinel
+     (start-process "*upver-cargo-outdated*" output-buf "cargo" "outdated" "--depth=1" "--format=json")
+     (lambda (_proc _event)
+       (funcall
+        cb
+        (with-current-buffer output-buf
+          (--map
+           (let-alist it
+             (list
+              :package .name
+              :current .project
+              :wanted (if (equal "---" .compat)
+                          .project
+                        .compat)
+              ;; TODO: Handle "Removed" packages. See the README of cargo outdated
+              :latest .latest))
+           (alist-get
+            'dependencies
+            (progn
+              (goto-char (point-min))
+              (json-parse-buffer :object-type 'alist :array-type 'list))))))
+       (kill-buffer output-buf)))))
+
+(defun upver--cargo-find-package-node (package-name)
+  "Find PACKAGE-NAMEs node."
+  ;; FIXME: Can't find packages with extended definition like:
+  ;; textwrap = { version = "0.16.0", default-features = false }
+  (alist-get
+   'value
+   (car
+    (-partition
+     2
+     (treesit-query-capture
+      (alist-get 'table (treesit-query-capture
+                         (treesit-buffer-root-node)
+                         '(((table (bare_key) @key) @table
+                            (:match "\\(dev\\)?dependencies" @key)))))
+      `(((pair (bare_key) @key (string) @value)
+         (:equal @key ,package-name))))))))
 
 ;;;; Overlay utils
 
@@ -163,12 +228,6 @@ Tries \"dependencies\" first and then \"devDependencies\"."
 
 ;;;; Main
 
-(defvar-local upver-updates '()
-  "Updates of the current buffer.")
-
-(defvar-local upver--pos '()
-  "Position info for updates.")
-
 (defvar-keymap upver-dependency-map
   "#" #'upver-wanted
   "^" #'upver-latest
@@ -183,12 +242,11 @@ Tries \"dependencies\" first and then \"devDependencies\"."
   (upver--clear-overlays)
   (setq upver--pos '())
   (--each updates
-    (when-let (node
-               (treesit-node-parent
-                (upver--find-package-node
-                 (plist-get it :package))))
-      (let* ((start (treesit-node-start node))
-             (end (treesit-node-end node))
+    (when-let* ((node (funcall (plist-get upver--def :locator)
+                               (plist-get it :package)))
+                (parent (treesit-node-parent node)))
+      (let* ((start (treesit-node-start parent))
+             (end (treesit-node-end parent))
              (ov (make-overlay start end))
              (wanted-current? (equal (plist-get it :wanted)
                                      (plist-get it :current)))
@@ -204,7 +262,7 @@ Tries \"dependencies\" first and then \"devDependencies\"."
          ov 'help-echo
          (lambda (_window _obj _pos)
            (substitute-command-keys
-	    (format
+            (format
              (concat
               "\\[upver-wanted] → %s\t\t\\[upver-latest] → %s\n"
               "\\[upver-next] → next\t\t\\[upver-prev] → previous\n"
@@ -241,12 +299,11 @@ Tries \"dependencies\" first and then \"devDependencies\"."
   (let ((inhibit-read-only t))
     (when-let* ((ov (upver--overlay-at (point)))
                 (data (overlay-get ov 'upver-data))
-                (node (overlay-get ov 'upver-node))
-                (value-node (treesit-node-child-by-field-name node "value")))
+                (node (overlay-get ov 'upver-node)))
       (save-excursion
-        (goto-char (treesit-node-start value-node))
-        (let* ((beg (treesit-node-start value-node))
-               (end (treesit-node-end value-node))
+        (goto-char (treesit-node-start node))
+        (let* ((beg (treesit-node-start node))
+               (end (treesit-node-end node))
                (current (prog1 (buffer-substring-no-properties (1+ beg) (1- end))
                           (delete-region beg end))))
           (insert
@@ -284,20 +341,26 @@ Tries \"dependencies\" first and then \"devDependencies\"."
 (defun upver ()
   "Start an upver session."
   (interactive)
-  (unless (equal (file-name-nondirectory (buffer-file-name)) "package.json")
-    (user-error "Not in a package.json buffer!"))
-  (when upver-mode
-    (upver-finish))
-  (message "upver: Getting updates...")
-  (upver-mode +1)
-  (read-only-mode)
-  (let ((buffer (current-buffer)))
-    (upver--npm-outdated
+  (let ((def (seq-find
+              (lambda (it) (funcall (plist-get it :pred)))
+              (map-values upver--defs)))
+        (buffer (current-buffer)))
+    (unless def
+      (user-error "upver :: Can't recognize \"%s\" buffer with mode `%s'"
+                  (buffer-name) major-mode))
+    (when upver-mode
+      (upver-finish))
+    (message "upver: Getting updates...")
+    (upver-mode +1)
+    (read-only-mode)
+    (setq-local upver--def def)
+    (funcall
+     (plist-get def :fetcher)
      (lambda (updates)
        (with-current-buffer buffer
          (upver--draw-updates updates)
          (upver--help-at-point)
-         (message "upver: Getting updates...Done.")
+         (message "upver: Getting updates...Done")
          (goto-char (point-min))
          (upver-next)
          (recenter))))))
@@ -313,7 +376,8 @@ Tries \"dependencies\" first and then \"devDependencies\"."
     (upver--help-at-point-cancel)
     (read-only-mode -1)
     ;; TODO: Add a finish hook that installs packages?
-    (message "upver: Done. You may want to run your package manager to install updated versions.")))
+    (message "upver: Done. You may want to run your package manager to install updated versions")
+    (setq-local upver--def nil)))
 
 (defun upver-next ()
   "Go to next upgradable dependency."
@@ -370,7 +434,7 @@ Tries \"dependencies\" first and then \"devDependencies\"."
     (setq
      upver--help-at-point-timer
      (run-with-idle-timer
-	    0 t #'upver--show-help))))
+      0 t #'upver--show-help))))
 
 (defun upver--help-at-point-cancel ()
   (when upver--help-at-point-timer
