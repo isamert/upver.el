@@ -3,7 +3,7 @@
 ;; Copyright (C) 2024  Isa Mert Gurbuz
 
 ;; Author: Isa Mert Gurbuz <isamertgurbuz@gmail.com>
-;; Version: 0.0.1
+;; Version: 0.1.2
 ;; Homepage: https://github.com/isamert/upver.el
 ;; License: GPL-3.0-or-later
 ;; Package-Requires: ((emacs "29.1") (s "1.13.0") (dash "2.19.1"))
