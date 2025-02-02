@@ -83,8 +83,43 @@ This effects the behavior of \\[upver-wanted] or \\[upver-latest]."
 (defvar-local upver--pos '()
   "Position info for updates.")
 
-(cl-defun upver--register (name &rest plist)
-  (map-put! upver--defs name plist))
+(cl-defun upver--register (name &rest rest)
+  "Register a new backend.
+
+NAME is an arbitrary name of the backend.  REST is following:
+
+PRED is a function that checks if this backend is applicable for the
+current buffer or not.  Called within the target buffer, with no
+parameters.
+
+FETCHER is a function that fetches the updates.  It takes one
+parameter, a callback function.  It should call this callback function
+when it finishes fetching the updates.  It should call the callback
+function with something like:
+
+    ((:package \"<package-name>\"
+      :current \"<current-version>\"
+      :wanted \"<wanted-version>\"
+      :latest \"<latest-version>\")
+
+      ...)
+
+LOCATOR is a function that takes one parameter, package name, and
+returns the corresponding treesit node.  Preferably it should return
+the node where the package version is shown.  upver places the
+overlays on the parent nodes of this returned node.
+
+
+Here is an example:
+
+    (upver--register
+     \"cargo\"
+     :pred (lambda ()
+             (and (equal (buffer-name) \"Cargo.toml\")
+                  (derived-mode-p \\='toml-ts-mode)))
+     :fetcher #\\='upver--cargo-outdated
+     :locator #\\='upver--cargo-find-package-node)"
+  (map-put! upver--defs name rest))
 
 ;;;; NPM
 
@@ -347,7 +382,7 @@ TYPE is either \"dependencies\" or \"devDependencies\"."
         (buffer (current-buffer)))
     (unless def
       (unless (bound-and-true-p treesit-primary-parser)
-        (warn "`treesit' is not enabled for this buffer. upver requires a `treesit' based mode to work"))
+        (warn "`treesit' is not enabled for this buffer.  upver requires a `treesit' based mode to work"))
       (user-error "upver :: Can't recognize \"%s\" buffer with mode `%s'"
                   (buffer-name) major-mode))
     (when (and buffer-file-name (buffer-modified-p))

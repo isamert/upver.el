@@ -89,3 +89,11 @@ command.  Which means
   semver range specified in the dependency file (~package.json~,
   ~Cargo.toml~ etc.).
 - *:latest* :: is the version of the package tagged as latest in the registry.
+
+* Other package managers
+
+upver currently only supports ~package.json~ (npm/Yarn) and ~Cargo.toml~
+files.  I am planning to add more (at least the ones I use, like maven
+sbt etc.) but it is also possible to extend upver with the
+~upver--register~ function.  See it's documentation.  Contributions are
+welcome!
